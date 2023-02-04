@@ -1,0 +1,61 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Slow API
+
+Parameters:
+  Redis:
+    Type: String
+    Default: <REDIS_CONFIGURATION>
+    Description: Redis configuration
+  Vpc:
+    Type: String
+    Default: <REDIS_VPC>
+    Description: Redis Vpc
+  Subnet:
+    Type: String
+    Default: <REDIS_SUBNET>
+    Description: Redis Subnet
+
+Globals:
+  Function:
+    Timeout: 60
+    MemorySize: 512
+    Runtime: dotnet6
+    Architectures:
+      - x86_64
+    Environment:
+      Variables:
+        REDIS_CONFIGURATION: !Ref Redis
+
+Resources:
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: lambda security group
+      VpcId: !Ref Vpc
+
+  VerySlowFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: verySlowCalculationApi::verySlowCalculationApi.Function::FunctionHandler
+      CodeUri: ./src/verySlowCalculationApi/
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds:
+          - !Ref Subnet
+      Policies:
+        - AWSLambda_FullAccess
+        - AWSLambdaVPCAccessExecutionRole
+      Events:
+        ListPosts:
+          Type: Api
+          Properties:
+            Path: /{id}
+            Method: get
+
+Outputs:
+  Api:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/{id}"
